@@ -1159,7 +1159,7 @@ TEST(CampResource, StreamSelect)
 #endif
 #ifdef CAMP_HAVE_SYCL
   {
-    auto gpuSelector = sycl::gpu_selector_v;
+    auto gpuSelector = sycl::default_selector_v;
     sycl::property_list propertyList =
         sycl::property_list(sycl::property::queue::in_order());
     sycl::context context;
@@ -1262,7 +1262,7 @@ TEST(CampResource, GetEvent)
 #endif
 #ifdef CAMP_HAVE_SYCL
   {
-    auto gpuSelector = sycl::gpu_selector_v;
+    auto gpuSelector = sycl::default_selector_v;
     sycl::property_list propertyList =
         sycl::property_list(sycl::property::queue::in_order());
     sycl::context context;
@@ -1310,7 +1310,7 @@ TEST(CampEvent, Get)
 #endif
 #ifdef CAMP_HAVE_SYCL
   {
-    auto gpuSelector = sycl::gpu_selector_v;
+    auto gpuSelector = sycl::default_selector_v;
     sycl::property_list propertyList =
         sycl::property_list(sycl::property::queue::in_order());
     sycl::context context;
@@ -1375,7 +1375,7 @@ TEST(CampEvent, GetConst)
 #endif
 #ifdef CAMP_HAVE_SYCL
   {
-    auto gpuSelector = sycl::gpu_selector_v;
+    auto gpuSelector = sycl::default_selector_v;
     sycl::property_list propertyList =
         sycl::property_list(sycl::property::queue::in_order());
     sycl::context context;
@@ -1863,7 +1863,7 @@ TEST(CampResourceSycl, Helpers)
   Sycl::set_thread_default_context(new_context);
   ASSERT_EQ(Sycl::get_thread_default_context(), new_context);
 
-  auto gpuSelector = sycl::gpu_selector_v;
+  auto gpuSelector = sycl::default_selector_v;
   sycl::property_list ordered_properties =
       sycl::property_list(sycl::property::queue::in_order());
   sycl::queue ordered_queue(new_context, gpuSelector, ordered_properties);

@@ -57,7 +57,12 @@ namespace resources
         if (!qu.is_in_order()) {
           ::camp::throw_re("Queue is not in_order.");
         }
-        m_event = qu.submit([&](::sycl::handler& CAMP_UNUSED_ARG(h)) {});
+        // The command group needs a real operation in it: AdaptiveCpp
+        // rejects an empty one ("Command queue evaluation did not result in
+        // the creation of events") rather than handing back an event. The
+        // queue is in_order, so an empty task still marks this point in it.
+        m_event = qu.submit(
+            [&](::sycl::handler& h) { h.single_task([]() {}); });
       }
 
       SyclEvent(SyclEvent const&) = delete;
@@ -200,7 +205,13 @@ namespace resources
         using value_second_type =
             std::pair<int, std::array<sycl::queue, num_queues>>;
         using queueMap_type = std::map<const sycl::context*, value_second_type>;
-        static queueMap_type queueMap;
+        // Intentionally immortal: the queues held here must outlive every
+        // other static object. Destroying a sycl::queue calls back into the
+        // SYCL runtime, and with AdaptiveCpp that runtime is itself torn down
+        // by a static destructor, so a normal function-local static races it
+        // at exit and segfaults in allocation_tracker::unregister_allocation.
+        // Leaking the map keeps destruction order out of the picture.
+        static queueMap_type& queueMap = *new queueMap_type();
         static const typename queueMap_type::iterator queueMap_end =
             queueMap.end();
         thread_local typename queueMap_type::iterator cachedContextIter =
@@ -222,7 +233,7 @@ namespace resources
           if (cachedContextIter == queueMap_end) {
             cachedContextIter = queueMap.find(syclContext);
             if (cachedContextIter == queueMap_end) {
-              static constexpr auto gpuSelector = sycl::gpu_selector_v;
+              static constexpr auto gpuSelector = sycl::default_selector_v;
               static const sycl::property_list propertyList =
                   sycl::property_list(sycl::property::queue::in_order());
 
@@ -320,8 +331,12 @@ namespace resources
 
       void wait_for(SyclEvent const& e)
       {
-        qu.submit(
-            [&](::sycl::handler& h) { h.depends_on(e.getSyclEvent_t()); });
+        // As above, depends_on alone is not an operation; pair it with an
+        // empty task so the command group is valid on every backend.
+        qu.submit([&](::sycl::handler& h) {
+          h.depends_on(e.getSyclEvent_t());
+          h.single_task([]() {});
+        });
       }
 
       void wait_for(Event const& e)
